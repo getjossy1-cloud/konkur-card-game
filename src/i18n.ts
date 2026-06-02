@@ -1,0 +1,85 @@
+export const dictionary = {
+  "en": {
+    "pot": "POT", "scoreboard": "SCOREBOARD", "yourTurn": "YOUR TURN", "deck": "DECK", "discard": "DISCARD",
+    "groupCards": "GROUP CARDS", "ungroup": "UNGROUP", "meld": "MELD", "playToTable": "PLAY TO TABLE",
+    "drawOpen": "DRAW & OPEN (41+)", "attachMeld": "ATTACH TO MELD", "conquer": "KONKUR!", "cancel": "CANCEL",
+    "seriesComplete": "Series Complete!", "continueGames": "Continue 10 More Games", "leaveTable": "Leave Table",
+    "error41": "Need 41+ Points to Open!", "bankrupt": "Bankrupt!", "editGroup": "EDIT GROUP", "lockInHand": "LOCK IN HAND",
+    "drawInstantConquer": "DRAW & INSTANT CONQUER", "ethiopianRummy": "Ethiopian Rummy",
+    "numberOfPlayers": "Number of Players", "gameStakes": "Game Stakes", "pts": "Pts", "gameMode": "Game Mode",
+    "vsAiOpponents": "Vs AI Opponents", "passAndPlay": "Pass & Play", "startGame": "[ Start Game ]",
+    "traditionalEthiopianRummy": "Traditional Ethiopian Rummy", "gameSession": "Game Session",
+    "waiting": "WAITING", "forfeited": "FORFEITED", "out": "OUT", "cards": "CARDS",
+    "drawDiscardMeld": "DRAW DISCARD & MELD", "currentTurn": "CURRENT TURN",
+    "opponentMelds": "Opponent Melds", "noOpponentMelds": "No Opponent Melds", "opponentsMustOpen": "Opponents must lay down 41+ points to open",
+    "reignedSupreme": "REIGNED SUPREME", "finalStandings": "Final Standings", "playAgain": "PLAY AGAIN",
+    "gameMenu": "GAME MENU", "restartGame": "RESTART GAME", "howToPlay": "HOW TO PLAY", "quitToMainMenu": "QUIT TO MAIN MENU"
+  },
+  "am": {
+    "pot": "መጠራቀሚያ", "scoreboard": "የውጤት ሰሌዳ", "yourTurn": "የእርስዎ ተራ", "deck": "ካርታ", "discard": "መጣያ (የተጣሉ)",
+    "groupCards": "ካርድ ሰብስብ", "ungroup": "በትን", "meld": "ማውረድ (ሜልዲ)", "playToTable": "ጠረጴዛ ላይ አውርድ",
+    "drawOpen": "ሳብና አርባ አንድ ክፈት (41+)", "attachMeld": "ማስገባት", "conquer": "ኮንከር!", "cancel": "ሰርዝ",
+    "seriesComplete": "ውድድር ተጠናቋል!", "continueGames": "ተጨማሪ 10 ጨዋታዎች ቀጥል", "leaveTable": "ከጠረጴዛው ውጣ",
+    "error41": "አርባ አንድ (41) አልሞላኝም!", "bankrupt": "በከተ / ኪሳራ!", "editGroup": "ቡድን አስተካክል", "lockInHand": "እጅ ላይ እሰር",
+    "drawInstantConquer": "ሳብና ወዲያው ኮንከር", "ethiopianRummy": "የኢትዮጵያ ራሚ",
+    "numberOfPlayers": "የተጫዋቾች ብዛት", "gameStakes": "የጨዋታ ውርርድ", "pts": "ነጥብ", "gameMode": "የጨዋታ ዓይነት",
+    "vsAiOpponents": "ከኮምፒውተር ጋር", "passAndPlay": "ተቀባብለህ ተጫወት", "startGame": "[ ጨዋታ ጀምር ]",
+    "traditionalEthiopianRummy": "ባህላዊ የኢትዮጵያ ራሚ", "gameSession": "የጨዋታ ጊዜ",
+    "waiting": "በመጠበቅ ላይ", "forfeited": "ተቋርጧል", "out": "ከጨዋታ ውጪ", "cards": "ካርዶች",
+    "drawDiscardMeld": "ሳብና አውርድ", "currentTurn": "የአሁኑ ተራ",
+    "opponentMelds": "የተጋጣሚ ካርዶች", "noOpponentMelds": "ምንም የወረደ ካርድ የለም", "opponentsMustOpen": "ተጋጣሚዎች ለማውረድ አርባ አንድ (41) መሙላት አለባቸው",
+    "reignedSupreme": "አሸናፊ ሆኗል", "finalStandings": "የመጨረሻ ውጤት", "playAgain": "እንደገና ተጫወት",
+    "gameMenu": "የጨዋታ ማውጫ", "restartGame": "ጨዋታውን እንደገና ጀምር", "howToPlay": "እንዴት መጫወት ይቻላል", "quitToMainMenu": "ወደ ዋናው ማውጫ ተመለስ"
+  },
+  "om": {
+    "pot": "Qabeenya", "scoreboard": "Gabatee Bu'aa", "yourTurn": "Mila Keeti", "deck": "Karta", "discard": "Gatama",
+    "groupCards": "Waliin Qabi", "ungroup": "Addaan Baasi", "meld": "Mawred (Meld)", "playToTable": "Gabateerris Deebi",
+    "drawOpen": "Fudi Nafani (Arba And 41+)", "attachMeld": "Masgebat", "conquer": "Konkur!", "cancel": "Dishi",
+    "seriesComplete": "Xumura Tapha!", "continueGames": "Taphawwan 10 Itti Fufi", "leaveTable": "Teessuma Gadi Laki",
+    "error41": "Banuuf Qabxii 41+ Sifallaa!", "bankrupt": "Honga'e!", "editGroup": "Garee Sirreessi", "lockInHand": "Harka keessatti cufi",
+    "drawInstantConquer": "Kaasi Fi Yeroosumatti Mo'adhu", "ethiopianRummy": "Rummy Itoophiyaa",
+    "numberOfPlayers": "Baay'ina Taphattoota", "gameStakes": "Gatiin Tapha", "pts": "Qabxii", "gameMode": "Akkaataa Tapha",
+    "vsAiOpponents": "Kompitara Waliin", "passAndPlay": "Dabarsi Waliin Tapadhu", "startGame": "[ Tapha Eegali ]",
+    "traditionalEthiopianRummy": "Aadaa Rummy Itoophiyaa", "gameSession": "Yeroo Tapha",
+    "waiting": "Eegaa Jira", "forfeited": "Haqameera", "out": "Ala", "cards": "Kaardiiwwan",
+    "drawDiscardMeld": "Kaasi Fi Maxxansi", "currentTurn": "Mila Ammaa",
+    "opponentMelds": "Kartaawwan Morkattootaa", "noOpponentMelds": "Kartaawwan Hin Buufamne", "opponentsMustOpen": "Morkattoonni qabxii 41+ argachuu qabu",
+    "reignedSupreme": "MO'UMMAA ARGATEERA", "finalStandings": "Sadarkaa Xumuraa", "playAgain": "IRRA DEEBI'II TAPHADHU",
+    "gameMenu": "BAAFATA TAPHA", "restartGame": "TAPHA IRRA DEEBI'II EEGALI", "howToPlay": "AKKAMITTI AKKA TAPHATAMU", "quitToMainMenu": "GARA BAAFATA IJOOTTI DEEBI'I"
+  },
+  "ti": {
+    "pot": "መአከቢ", "scoreboard": "ሰሌዳ ውጽኢት", "yourTurn": "ተራኻ", "deck": "ካርታ", "discard": "ዝተደርበዩ",
+    "groupCards": "ካርታ ኣክብብ", "ungroup": "ብትኖ", "meld": "ማውረድ (ሜልዲ)", "playToTable": "ኣብ ሰሌዳ አስቀምጥ",
+    "drawOpen": "ኣውርድን ክፈትን (41+)", "attachMeld": "ማስገባት", "conquer": "ኮንከር!", "cancel": "ሰርዝ",
+    "seriesComplete": "ውድድር ተወዲኡ!", "continueGames": "ተወሳኺ 10 ጸወታታት ቀጽል", "leaveTable": "ካብ ሰሌዳ ውጻእ",
+    "error41": "አርባ ሓደ (41) ኣይመልአን!", "bankrupt": "ክሳራ!", "editGroup": "ጉጅለ ኣስተኻኽል", "lockInHand": "አብ ኢድ እሰር",
+    "drawInstantConquer": "ስሓብን ብኡንብኡ ኮንከር", "ethiopianRummy": "ናይ ኢትዮጵያ ራሚ",
+    "numberOfPlayers": "ብዝሒ ተጻወትቲ", "gameStakes": "ውርርድ ጸወታ", "pts": "ነጥቢ", "gameMode": "ዓይነት ጸወታ",
+    "vsAiOpponents": "ምስ ኮምፒውተር", "passAndPlay": "ተቐባቢልካ ተጻወት", "startGame": "[ ጸወታ ጀምር ]",
+    "traditionalEthiopianRummy": "ባህላዊ ራሚ ኢትዮጵያ", "gameSession": "እዋን ጸወታ",
+    "waiting": "በመጽበይ", "forfeited": "ተቛሪጹ", "out": "ወጻእ", "cards": "ካርታታት",
+    "drawDiscardMeld": "ስሓብን ኣውርድን", "currentTurn": "ናይ ሕጂ ተራ",
+    "opponentMelds": "ናይ ተወዳዳሪ ካርታታት", "noOpponentMelds": "ምንም ዝወረደ ካርታ የለን", "opponentsMustOpen": "ተወዳደርቲ 41 ክመልኡ ኣለዎም",
+    "reignedSupreme": "ተዓዊቱ", "finalStandings": "ናይ መወዳእታ ውጽኢት", "playAgain": "እንደገና ተጻወት",
+    "gameMenu": "ማውጫ ጸወታ", "restartGame": "ጸወታ እንደገና ጀምር", "howToPlay": "ከመይ ጌርካ ከምዝጻወት", "quitToMainMenu": "ናብ ዋና ማውጫ ተመለስ"
+  },
+  "so": {
+    "pot": "Uruursi", "scoreboard": "Loox dhibcaha", "yourTurn": "Markaaga", "deck": "Kaararka", "discard": "Tuuray",
+    "groupCards": "Isku Geey", "ungroup": "Kala Bixi", "meld": "Isku Xir (Meld)", "playToTable": "Miiska Saar",
+    "drawOpen": "Goo & Fur (41+)", "attachMeld": "Kudar Isku-xirka", "conquer": "Konkur!", "cancel": "Ka Noqo",
+    "seriesComplete": "Ciyaartu Waa Dhamaatay!", "continueGames": "Sii Wad 10 Ciyaarood", "leaveTable": "Miiska Ka Kac",
+    "error41": "Si aad u furto waxaad u baahantahay dhibco 41+!", "bankrupt": "Khasaaray!", "editGroup": "Badal Gurubka", "lockInHand": "Xir Gacanta",
+    "drawInstantConquer": "Qaado & Isla markiiba Guulayso", "ethiopianRummy": "Rummy-ga Itoobiya",
+    "numberOfPlayers": "Tirada Ciyaartoyda", "gameStakes": "Sharuudaha Ciyaarta", "pts": "Dhibco", "gameMode": "Habka Ciyaarta",
+    "vsAiOpponents": "Ka Soo Horjeed Komuyuutarka", "passAndPlay": "Gudbi Oo Ciyaar", "startGame": "[ Bilow Ciyaarta ]",
+    "traditionalEthiopianRummy": "Rummy-ga Dhaqan ah ee Itoobiya", "gameSession": "Kulan Ciyaareed",
+    "waiting": "SUGAYAA", "forfeited": "WAXAA LA BUR-BURTYAY", "out": "Banaanka", "cards": "Kaararka",
+    "drawDiscardMeld": "Qaado Oo Isku Xir", "currentTurn": "Ciyaartoyga Hada",
+    "opponentMelds": "Isku Xirka Mucaaradka", "noOpponentMelds": "Majiiraan Isku Xir", "opponentsMustOpen": "Mucaaradku waa inay furaan 41 dhibcood",
+    "reignedSupreme": "WAA GUULAYSAY", "finalStandings": "Heerarka Ugu Dambeeya", "playAgain": "MARKA KALE CIYAAR",
+    "gameMenu": "LIISKA CIYAARTA", "restartGame": "DIB U BILOOW CIYAARTA", "howToPlay": "SIDA LOO CIYAARO", "quitToMainMenu": "KU NOQO LIISKA UGU WEYN"
+  }
+};
+
+export type Locale = keyof typeof dictionary;
+export type LocalizationKey = keyof typeof dictionary["en"];
