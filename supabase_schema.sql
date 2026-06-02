@@ -4,7 +4,12 @@ CREATE TABLE IF NOT EXISTS public.users (
   telegram_id BIGINT PRIMARY KEY,
   username TEXT,
   display_name TEXT NOT NULL,
-  bankroll INT NOT NULL DEFAULT 1000
+  bankroll INT NOT NULL DEFAULT 1000,
+  photo_url TEXT,
+  wins INT NOT NULL DEFAULT 0,
+  losses INT NOT NULL DEFAULT 0,
+  games_played INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS public.rooms (

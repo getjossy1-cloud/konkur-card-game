@@ -29,6 +29,8 @@ export type PlayerId = string;
 export interface PlayerState {
   id: string;
   name: string;
+  telegramId?: number | string;
+  photoUrl?: string;
   hand: Card[];
   melds: Meld[];
   isBot: boolean;
@@ -41,7 +43,7 @@ export interface PlayerState {
 
 export interface GameSettings {
   playerCount: number;
-  gameMode: 'pass-and-play' | 'vs-ai';
+  gameMode: 'pass-and-play' | 'vs-ai' | 'multiplayer';
   gameStake: number;
 }
 

@@ -54,6 +54,7 @@ import {
 import { CardUI } from './components/CardUI';
 import { dictionary, Locale, LocalizationKey } from './i18n';
 import { supabase } from './lib/supabase';
+import { initTelegramProfile, TelegramProfile } from './lib/telegram';
 
 declare global {
   interface Window {
@@ -65,7 +66,7 @@ declare global {
 
 type Action =
   | { type: 'SYNC_STATE'; payload: GameState }
-  | { type: 'START_GAME'; settings?: GameSettings; multiplayerPlayers?: { id: string | number; name: string }[] }
+  | { type: 'START_GAME'; settings?: GameSettings; multiplayerPlayers?: { id: string | number; name: string; photoUrl?: string }[]; tgUser?: TelegramProfile }
   | { type: 'DRAW_FROM_DECK'; playerId: PlayerId }
   | { type: 'DRAW_FROM_DISCARD'; playerId: PlayerId }
   | { type: 'MELD_WITH_DISCARD'; playerId: PlayerId; handCardIds: string[] }
@@ -278,6 +279,8 @@ function gameReducer(state: GameState, action: Action): GameState {
              tempPlayers.push({
                id: action.multiplayerPlayers[i].id.toString(),
                name: action.multiplayerPlayers[i].name,
+               telegramId: action.multiplayerPlayers[i].id.toString(),
+               photoUrl: action.multiplayerPlayers[i].photoUrl,
                hand: [],
                melds: [],
                isBot: false,
@@ -292,14 +295,30 @@ function gameReducer(state: GameState, action: Action): GameState {
           // Initialize players with 15x multiplier of the chosen gameStake
           for (let i = 0; i < settings.playerCount; i++) {
             const isBot = settings.gameMode === 'vs-ai' && i > 0;
+            
+            let pId = `p${i}`;
+            let pName = isBot ? `CPU ${i}` : `Player ${i + 1}`;
+            let tId: string | undefined = undefined;
+            let pUrl: string | undefined = undefined;
+            
+            // If it's the primary local player and we have their tgUser
+            if (i === 0 && action.tgUser) {
+               pId = action.tgUser.id.toString();
+               pName = action.tgUser.display_name;
+               tId = action.tgUser.id.toString();
+               pUrl = action.tgUser.photo_url;
+            }
+
             tempPlayers.push({
-              id: `p${i}`,
-              name: isBot ? `CPU ${i}` : `Player ${i + 1}`,
+              id: pId,
+              name: pName,
+              telegramId: tId,
+              photoUrl: pUrl,
               hand: [],
               melds: [],
               isBot,
               isOpened: false,
-              totalBankroll: settings.gameStake * 15,
+              totalBankroll: i === 0 && action.tgUser ? action.tgUser.bankroll : settings.gameStake * 15,
               isBankrupt: false,
               hasPlayedFirstTurn: false,
               isForfeited: false,
@@ -1167,12 +1186,12 @@ export default function App() {
   const [locale, setLocale] = useState<Locale>('en');
 
   // Multi-player / Telegram / Supabase Local State
-  const [tgUser, setTgUser] = useState<{ id: string | number; first_name: string; username?: string; display_name: string; bankroll: number } | null>(null);
+  const [tgUser, setTgUser] = useState<TelegramProfile | null>(null);
   const [isLobbyLoading, setIsLobbyLoading] = useState(true);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [joinRoomId, setJoinRoomId] = useState('');
   const [isInMultiplayerRoom, setIsInMultiplayerRoom] = useState(false);
-  const [multiplayerRoom, setMultiplayerRoom] = useState<{ host_id: string | number, players: { id: string | number, name: string, seat_index: number }[] } | null>(null);
+  const [multiplayerRoom, setMultiplayerRoom] = useState<{ host_id: string | number, players: { id: string | number, name: string, photo_url?: string, seat_index: number }[] } | null>(null);
 
   const dispatch = useCallback((action: Action) => {
     if (action.type === 'SYNC_STATE') {
@@ -1189,92 +1208,56 @@ export default function App() {
   }, [isInMultiplayerRoom, roomId, dispatchRaw]);
 
   useEffect(() => {
-    const initTelegramAuth = async () => {
+    const initAuth = async () => {
       try {
-        let extractedUser: { id: number | string; first_name: string; username?: string } | null = null;
-        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-          extractedUser = window.Telegram.WebApp.initDataUnsafe.user;
-          try { window.Telegram.WebApp.ready(); } catch(e){}
-        } else {
-          // Dev mock fallback
-          extractedUser = { id: Math.floor(Math.random() * 1000000), first_name: 'Test_Player' };
+        const profile = await initTelegramProfile(supabase);
+        if (profile) {
+          setTgUser(profile);
         }
-
-        if (extractedUser) {
-          let { data: existingUser, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('telegram_id', extractedUser.id)
-            .single();
-
-          if (error && error.code === 'PGRST116') {
-             // Not found, insert
-             const { data: newUser, error: insertError } = await supabase
-               .from('users')
-               .insert([{
-                  telegram_id: extractedUser.id,
-                  first_name: extractedUser.first_name, // fallback column
-                  username: extractedUser.username,
-                  display_name: extractedUser.first_name,
-                  bankroll: 1000
-               }])
-               .select()
-               .single();
-               
-             if (!insertError && newUser) {
-                existingUser = newUser;
-             }
-          }
-          if (existingUser) {
-            setTgUser({
-              id: existingUser.telegram_id,
-              first_name: existingUser.first_name || existingUser.display_name,
-              username: existingUser.username,
-              display_name: existingUser.display_name,
-              bankroll: existingUser.bankroll
-            });
-          }
-        }
-      } catch (err) {
-        console.error("Auth init error", err);
       } finally {
         setIsLobbyLoading(false);
       }
     };
-    initTelegramAuth();
+    initAuth();
   }, []);
 
   // End match logic (winner execution side-effects)
+  const prevWinnerIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (state.winnerId && isInMultiplayerRoom && roomId && tgUser) {
-        // Did I win? Update bankrolls in the cloud
-        if (state.winnerId === tgUser.id.toString()) {
-           const winnerState = state.players.find(p => p.id === state.winnerId);
-           if (winnerState) {
-              const newBankroll = tgUser.bankroll + (state.pointTransfers?.[tgUser.id.toString()]?.earned || 0);
+    if (state.winnerId && state.winnerId !== prevWinnerIdRef.current && tgUser) {
+        prevWinnerIdRef.current = state.winnerId;
+        
+        // Find my player state
+        const myPlayerState = state.players.find(p => p.telegramId === tgUser.id.toString() || p.id === tgUser.id.toString());
+        if (myPlayerState) {
+           const isWinner = myPlayerState.id === state.winnerId;
+           const myTransfers = state.pointTransfers?.[myPlayerState.id];
+           
+           const newBankroll = tgUser.bankroll + (myTransfers?.earned || 0) - (myTransfers?.penalty || 0);
+           const newWins = tgUser.wins + (isWinner ? 1 : 0);
+           const newLosses = tgUser.losses + (isWinner ? 0 : 1);
+           const newGamesPlayed = tgUser.games_played + 1;
 
-              // Update the hosts local room status to finished
-              supabase.from('rooms').update({ status: 'finished' }).eq('room_id', roomId).then();
-              
-              // Only winner updates their cloud bankroll, other users deduct from their own clients ideally.
-              supabase.from('users').update({ bankroll: newBankroll }).eq('telegram_id', tgUser.id).then();
-              
-              // And delete the room to save free tier since the match is "finished" forever for all?
-              // The simplest is to delete room when leaving. Or delete room here on a delay so others see it finish.
-              setTimeout(() => {
-                 supabase.from('rooms').delete().eq('room_id', roomId).then();
-              }, 5000); // 5 sec delayed clean up
-           }
-        } else {
-           // I lost
-           const myState = state.players.find(p => p.id === tgUser.id.toString());
-           if (myState) {
-              const newBankroll = tgUser.bankroll - (state.pointTransfers?.[tgUser.id.toString()]?.penalty || 0);
-              supabase.from('users').update({ bankroll: newBankroll }).eq('telegram_id', tgUser.id).then();
-           }
+           // Update in Supabase
+           supabase.from('users').update({ 
+               bankroll: newBankroll,
+               wins: newWins,
+               losses: newLosses,
+               games_played: newGamesPlayed
+           }).eq('telegram_id', tgUser.id).then(() => {
+               // Update local state so lobby reflects it
+               setTgUser(prev => prev ? { ...prev, bankroll: newBankroll, wins: newWins, losses: newLosses, games_played: newGamesPlayed } : null);
+           });
         }
+
+        // Host closes the room if multiplayer
+        if (isInMultiplayerRoom && roomId && multiplayerRoom && tgUser.id.toString() === multiplayerRoom.host_id.toString()) {
+            supabase.from('rooms').update({ status: 'finished' }).eq('room_id', roomId).then();
+        }
+    } else if (!state.winnerId) {
+        prevWinnerIdRef.current = null;
     }
-  }, [state.winnerId, isInMultiplayerRoom, roomId, tgUser?.id]);
+  }, [state.winnerId, tgUser, state.players, state.pointTransfers, isInMultiplayerRoom, roomId, multiplayerRoom]);
 
   const handleCreateMatch = async () => {
     if (!tgUser) return;
@@ -1283,7 +1266,7 @@ export default function App() {
       room_id: newRoomId,
       host_id: tgUser.id,
       status: 'waiting',
-      players: [{ id: tgUser.id, name: tgUser.display_name, seat_index: 0 }]
+      players: [{ id: tgUser.id, name: tgUser.display_name, photo_url: tgUser.photo_url, seat_index: 0 }]
     }]);
     if (!error) {
       setRoomId(newRoomId);
@@ -1295,7 +1278,7 @@ export default function App() {
     if (!tgUser || !joinRoomId) return;
     const { data: room, error } = await supabase.from('rooms').select('*').eq('room_id', joinRoomId.toUpperCase()).single();
     if (!error && room && room.players.length < 4) {
-      const updatedPlayers = [...room.players, { id: tgUser.id, name: tgUser.display_name, seat_index: room.players.length }];
+      const updatedPlayers = [...room.players, { id: tgUser.id, name: tgUser.display_name, photo_url: tgUser.photo_url, seat_index: room.players.length }];
       await supabase.from('rooms').update({ players: updatedPlayers }).eq('room_id', joinRoomId.toUpperCase());
       setRoomId(joinRoomId.toUpperCase());
       setIsInMultiplayerRoom(true);
@@ -2206,9 +2189,13 @@ export default function App() {
                <div className="space-y-2 mb-8">
                  {multiplayerRoom?.players.map((p, i) => (
                     <div key={p.id} className="flex items-center gap-3 bg-slate-800/80 p-3 rounded-xl border border-white/5">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm border border-emerald-500/30">
-                         {p.name.charAt(0).toUpperCase()}
-                      </div>
+                      {p.photo_url ? (
+                         <img src={p.photo_url} alt={p.name} className="w-8 h-8 rounded-full border border-emerald-500/30 object-cover" />
+                      ) : (
+                         <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm border border-emerald-500/30">
+                            {p.name.charAt(0).toUpperCase()}
+                         </div>
+                      )}
                       <div className="text-sm font-bold text-slate-200">
                          {p.name} {p.id.toString() === multiplayerRoom.host_id?.toString() && <span className="text-amber-400 ml-1 text-xs px-1 border border-amber-500/30 rounded">HOST</span>}
                       </div>
@@ -2227,7 +2214,7 @@ export default function App() {
                     onClick={() => {
                         dispatch({ 
                           type: 'START_GAME', 
-                          settings: { playerCount: multiplayerRoom?.players.length ?? 2, gameStake: 10, gameMode: 'pass-and-play' },
+                          settings: { playerCount: multiplayerRoom?.players.length ?? 2, gameStake: 10, gameMode: 'multiplayer' },
                           multiplayerPlayers: multiplayerRoom?.players
                         });
                         supabase.from('rooms').update({ status: 'playing' }).eq('room_id', roomId);
@@ -2364,7 +2351,7 @@ export default function App() {
             </div>
 
             <button
-              onClick={() => dispatch({ type: 'START_GAME', settings: { playerCount: lobbyPlayerCount, gameMode: lobbyGameMode, gameStake: lobbyStartingPoints } })}
+              onClick={() => dispatch({ type: 'START_GAME', settings: { playerCount: lobbyPlayerCount, gameMode: lobbyGameMode, gameStake: lobbyStartingPoints }, tgUser: tgUser || undefined })}
               className="w-full py-4 mt-4 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-slate-900 font-black text-lg tracking-widest uppercase rounded-xl transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-emerald-500/30 flex items-center justify-center gap-2"
             >
               {getText("startGame")} <Play className="w-5 h-5" />
@@ -2466,7 +2453,13 @@ export default function App() {
             <div key={p.id} className={`glass-panel rounded-xl p-2 sm:p-4 flex flex-col shrink-0 transition-all ${state.activePlayerIndex === idx ? 'ring-2 ring-emerald-500 scale-105 shadow-lg shadow-emerald-500/20' : 'opacity-70 scale-95'}`}>
               <div className="flex items-center gap-2 sm:gap-4 w-full">
                 <div className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full border sm:border-2 overflow-hidden shrink-0 flex items-center justify-center font-bold text-sm sm:text-lg ${state.activePlayerIndex === idx ? 'bg-emerald-500 border-emerald-300 text-slate-900' : 'bg-slate-700 border-slate-500'} ${p.isForfeited || p.isBankrupt ? 'grayscale opacity-50' : ''}`}>
-                  {p.isBot ? <Bot className="w-4 h-4 sm:w-6 sm:h-6" /> : <User className="w-4 h-4 sm:w-6 sm:h-6" />}
+                  {p.isBot ? (
+                    <Bot className="w-4 h-4 sm:w-6 sm:h-6" />
+                  ) : p.photoUrl ? (
+                    <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="opacity-80">{p.name.charAt(0).toUpperCase()}</span>
+                  )}
                 </div>
                 <div className="hidden sm:block">
                   <div className="text-[10px] text-slate-400 uppercase tracking-widest">{p.isBankrupt ? getText('bankrupt') : (p.isForfeited ? getText('forfeited') : (state.activePlayerIndex === idx ? getText('yourTurn') : getText('waiting')))}</div>
@@ -2520,7 +2513,16 @@ export default function App() {
             <div className="flex flex-col gap-1">
               {state.players.map(p => (
                 <div key={p.id} className="flex justify-between items-center text-[10px] sm:text-xs font-mono font-bold">
-                  <span className={`${p.id === 'p0' ? 'text-emerald-400' : 'text-amber-400'} truncate mr-2`}>{p.name}</span>
+                  <div className="flex items-center gap-1.5 overflow-hidden">
+                    {p.photoUrl ? (
+                      <img src={p.photoUrl} alt={p.name} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-slate-700 flex items-center justify-center text-[8px] text-slate-300 shrink-0">
+                        {p.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className={`${p.telegramId === tgUser?.id?.toString() ? 'text-emerald-400' : 'text-amber-400'} truncate mr-2`}>{p.name}</span>
+                  </div>
                   <span className="text-white relative">
                     {p.totalBankroll} {getText("pts")}
                     {/* Transfer Floating Text Animation */}
@@ -3304,7 +3306,16 @@ export default function App() {
                 <div className="text-[10px] text-slate-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">{getText("finalStandings")}</div>
                 {state.players.map(p => (
                    <div key={p.id} className="flex justify-between items-center">
-                     <span className={`font-mono text-xs ${p.id === state.winnerId ? 'text-emerald-400 font-bold' : 'text-slate-300'}`}>{p.name}</span>
+                     <div className="flex items-center gap-2 overflow-hidden">
+                        {p.photoUrl ? (
+                          <img src={p.photoUrl} alt={p.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0 border border-slate-600">
+                            {p.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className={`font-mono text-xs truncate ${p.id === state.winnerId ? 'text-emerald-400 font-bold' : 'text-slate-300'}`}>{p.name}</span>
+                     </div>
                      <div className="flex items-center gap-2">
                          {state.pointTransfers && state.pointTransfers[p.id] && (
                            ((p.id === state.winnerId && state.pointTransfers[p.id].earned > 0) || (p.id !== state.winnerId && state.pointTransfers[p.id].penalty > 0)) && (
