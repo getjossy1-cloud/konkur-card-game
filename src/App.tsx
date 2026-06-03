@@ -1237,23 +1237,16 @@ export default function App() {
       if (action.type === 'START_GAME') {
         updatePayload.status = 'playing';
       }
-      try {
-        supabase.from('rooms').update(updatePayload).eq('room_id', roomId).select()
-          .then(({ data, error }) => {
-             if (error) {
-                alert("Supabase Update Error: " + error.message + " | Code: " + error.code);
-             } else {
-                if (!data || data.length === 0) {
-                   alert("Supabase Update Success but 0 rows modified! roomId was: " + roomId);
-                } else {
-                   // alert("Update Success! Rows: " + data.length); // Disable success spam
-                }
-             }
-          })
-          .catch((e) => alert("Supabase Async Error: " + e.message));
-      } catch (e: any) {
-         alert("Supabase Sync Error: " + e.message);
-      }
+      (async () => {
+        try {
+          const { error } = await supabase.from('rooms').update(updatePayload).eq('room_id', roomId);
+          if (error) {
+             console.error("Supabase Update Error: ", error.message);
+          }
+        } catch (e: any) {
+          console.error("Supabase Exception: ", e.message);
+        }
+      })();
     }
   }, [isInMultiplayerRoom, roomId, dispatchRaw]);
 
