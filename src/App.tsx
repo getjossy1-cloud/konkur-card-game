@@ -54,7 +54,7 @@ import {
 import { CardUI } from './components/CardUI';
 import { dictionary, Locale, LocalizationKey } from './i18n';
 import { supabase } from './lib/supabase';
-import { initTelegramProfile, TelegramProfile } from './lib/telegram';
+import { TelegramProfile } from './lib/telegram';
 
 declare global {
   interface Window {
@@ -1210,9 +1210,39 @@ export default function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const profile = await initTelegramProfile(supabase);
-        if (profile) {
-          setTgUser(profile);
+        let extractedUser: { id: number | string; first_name: string; username?: string; photo_url?: string } | null = null;
+        
+        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+          extractedUser = window.Telegram.WebApp.initDataUnsafe.user;
+          try { window.Telegram.WebApp.ready(); } catch(e){}
+        } else {
+          extractedUser = { id: 100000001, first_name: 'Dev_Player', username: 'dev_hero' };
+        }
+
+        if (extractedUser) {
+          const displayName = extractedUser.first_name || 'Player';
+          await supabase.from('users').upsert({
+            telegram_id: extractedUser.id,
+            username: extractedUser.username,
+            display_name: displayName,
+            photo_url: extractedUser.photo_url
+          }, { onConflict: 'telegram_id', ignoreDuplicates: true });
+
+          const { data: existingUser } = await supabase.from('users').select('*').eq('telegram_id', extractedUser.id).single();
+          if (existingUser) {
+            setTgUser({
+              id: existingUser.telegram_id,
+              telegram_id: existingUser.telegram_id,
+              username: existingUser.username,
+              display_name: existingUser.display_name,
+              first_name: existingUser.display_name,
+              photo_url: existingUser.photo_url,
+              bankroll: existingUser.bankroll,
+              wins: existingUser.wins,
+              losses: existingUser.losses,
+              games_played: existingUser.games_played
+            });
+          }
         }
       } finally {
         setIsLobbyLoading(false);
@@ -2241,9 +2271,13 @@ export default function App() {
             <div className="space-y-6">
                <div className="bg-slate-800/80 p-4 sm:p-5 rounded-2xl border border-white/5 flex items-center justify-between shadow-inner">
                   <div className="flex items-center gap-3 sm:gap-4">
-                     <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-xl sm:text-2xl border-2 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                        {tgUser.display_name.charAt(0).toUpperCase()}
-                     </div>
+                     {tgUser.photo_url ? (
+                        <img src={tgUser.photo_url} alt={tgUser.display_name} className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-full border-2 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]" />
+                     ) : (
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-xl sm:text-2xl border-2 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                           {tgUser.display_name.charAt(0).toUpperCase()}
+                        </div>
+                     )}
                      <div>
                         <div className="font-bold text-white text-lg sm:text-xl leading-tight drop-shadow-sm">{tgUser.display_name}</div>
                         <div className="text-[9px] sm:text-[10px] text-slate-400 font-mono uppercase tracking-widest mt-0.5">ID: {tgUser.id}</div>
@@ -2257,12 +2291,12 @@ export default function App() {
                
                <div className="flex flex-col gap-3">
                   <button onClick={handleCreateMatch} className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-black tracking-[0.2em] uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-sm active:scale-95">
-                     CREATE MATCH
+                     Create Lobby
                   </button>
                </div>
 
                <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5 space-y-3">
-                  <label className="block text-[10px] sm:text-xs font-mono text-slate-400 uppercase tracking-widest">Join Match</label>
+                  <label className="block text-[10px] sm:text-xs font-mono text-slate-400 uppercase tracking-widest">Join Lobby</label>
                   <div className="flex gap-2">
                      <input 
                         type="text" 
@@ -2273,7 +2307,7 @@ export default function App() {
                         className="flex-[2] bg-slate-900 border border-slate-700 rounded-lg px-4 font-mono font-black text-lg text-center uppercase focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-700 placeholder:font-normal text-white"
                      />
                      <button onClick={handleJoinMatch} disabled={joinRoomId.length !== 4} className="flex-1 py-3 bg-amber-500 disabled:bg-slate-800 disabled:text-slate-600 hover:bg-amber-400 text-slate-900 font-black tracking-widest uppercase rounded-lg transition-all text-[10px] sm:text-xs active:scale-95 disabled:active:scale-100 disabled:shadow-none shadow-md shadow-amber-500/20">
-                        JOIN
+                        Join
                      </button>
                   </div>
                </div>
@@ -2605,22 +2639,60 @@ export default function App() {
         </AnimatePresence>
         {/* Top Section (Opponent & Table) - Roughly 50% */}
         <div className="flex-[4.5] flex flex-col p-2 sm:p-4 pb-0 overflow-hidden relative">
-          {/* Opponent Cards (Fan) */}
-          {state.settings.gameMode === 'vs-ai' && state.players.length === 2 && (
-            <div className="flex justify-center mb-0 sm:mb-2 overflow-hidden shrink-0">
-              <div className="flex -space-x-12 sm:-space-x-14 md:-space-x-10 opacity-60 transform scale-[0.6] sm:scale-90 origin-top hover:opacity-100 transition-all pt-2">
-                {state.players[1].hand.map((card, i) => (
-                  <div 
-                    key={card.id} 
-                    className="transform transition-transform hover:-translate-y-4"
-                    style={{ rotate: `${(i - (state.players[1].hand.length - 1) / 2) * 2}deg` }}
-                  >
-                    <CardUI card={card} />
+          {/* Opponent Cards (Fan/Stack) */}
+          {(() => {
+            const localPlayer = isInMultiplayerRoom 
+              ? state.players.find(p => p.id === tgUser?.id?.toString()) || state.players[state.activePlayerIndex]
+              : state.players[state.activePlayerIndex];
+            const opponents = state.players.filter(p => p.id !== localPlayer.id);
+
+            return opponents.length > 0 && (
+              <div className={`flex justify-center mb-0 sm:mb-2 overflow-hidden shrink-0 gap-4 sm:gap-8 ${opponents.length > 1 ? 'flex-wrap' : ''}`}>
+                {opponents.map(opp => (
+                  <div key={opp.id} className="flex flex-col items-center">
+                    <div className="flex items-center gap-2 mb-2 bg-slate-900/60 px-3 py-1.5 rounded-full border border-white/5">
+                      {opp.photoUrl ? (
+                        <img src={opp.photoUrl} alt={opp.name} className="w-6 h-6 rounded-full object-cover border border-emerald-500/30" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400">
+                          {opp.isBot ? <Bot className="w-3 h-3"/> : opp.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-xs font-bold text-slate-200">{opp.name}</span>
+                      <span className="text-[10px] text-amber-400 font-mono ml-2">{opp.totalBankroll} <span className="text-[8px] text-slate-500">PTS</span></span>
+                    </div>
+                    
+                    {opponents.length === 1 ? (
+                      /* 1v1 Full Fan */
+                      <div className="flex -space-x-12 sm:-space-x-14 md:-space-x-10 opacity-60 transform scale-[0.6] sm:scale-[0.85] origin-top hover:opacity-100 transition-all pt-2">
+                        {opp.hand.map((card, i) => (
+                          <div 
+                            key={card.id} 
+                            className="transform transition-transform hover:-translate-y-4"
+                            style={{ rotate: `${(i - (opp.hand.length - 1) / 2) * 2}deg` }}
+                          >
+                            <CardUI card={card} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      /* Multiplayer Stacked Layout */
+                      <div className="flex -space-x-16 opacity-70 transform scale-[0.4] sm:scale-50 origin-top hover:-translate-y-4 hover:opacity-100 transition-all pt-2 group relative">
+                        {opp.hand.map((card, i) => (
+                          <div key={card.id} className="transform transition-transform group-hover:translate-x-2">
+                             <CardUI card={card} />
+                          </div>
+                        ))}
+                        <div className="absolute inset-0 z-10 flex items-center justify-center">
+                           <span className="bg-slate-900/80 text-white font-mono font-black text-3xl px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 shadow-2xl">{opp.hand.length}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Opponent Melds */}
           <div className="flex-1 min-h-0 flex flex-col gap-2">
