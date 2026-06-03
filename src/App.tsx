@@ -97,7 +97,7 @@ type Action =
   | { type: 'DEBUG_FORCE_ANTE_AND_WIN'; playerId: PlayerId }
   | { type: 'END_CPU_TURN' }
   | { type: 'FORFEIT_ACTIVE_PLAYER' }
-  | { type: 'QUIT_GAME' };
+  | { type: 'QUIT_GAME'; playerId?: string | number };
 
 const START_PLAYER_CARDS = 14;
 const START_CPU_CARDS = 13;
@@ -260,12 +260,42 @@ function gameReducer(state: GameState, action: Action): GameState {
     }
 
     case 'QUIT_GAME': {
+      const { playerId } = action;
+      if (!playerId || !state.players) {
+        return {
+          ...initialState,
+          hasStarted: false,
+          settings: state.settings,
+        };
+      }
 
-      return {
-        ...initialState,
-        hasStarted: false,
-        settings: state.settings,
-      };
+      const newPlayers = state.players.map(p => 
+        p.id === playerId ? { ...p, isForfeited: true, hand: [] } : p
+      );
+      
+      const activePlayers = newPlayers.filter(p => !p.isForfeited && !p.isBankrupt);
+
+      if (activePlayers.length < 2) {
+        return {
+          ...initialState,
+          hasStarted: false,
+          settings: state.settings,
+        };
+      }
+
+      let nextState = { ...state, players: newPlayers };
+      
+      // If it was their turn, advance
+      if (state.players[state.activePlayerIndex] && state.players[state.activePlayerIndex].id === playerId) {
+         let nextIdx = (state.activePlayerIndex + 1) % state.players.length;
+         while (nextState.players[nextIdx].isForfeited || nextState.players[nextIdx].isBankrupt) {
+            nextIdx = (nextIdx + 1) % state.players.length;
+         }
+         nextState.activePlayerIndex = nextIdx;
+         nextState.turnStartTime = Date.now();
+      }
+
+      return nextState;
     }
 
     case 'START_GAME': {
@@ -1164,6 +1194,7 @@ function gameReducer(state: GameState, action: Action): GameState {
   }
 }
 
+const findAutoMelds = (hand: Card[]): { melds: Card[][], remainingHand: Card[] } => {
 const GAME_STAKES = [2, 5, 10, 25, 50, 100];
 
 export default function App() {
@@ -1203,7 +1234,11 @@ export default function App() {
     dispatchRaw(action);
 
     if (isInMultiplayerRoom && roomId) {
-      supabase.from('rooms').update({ game_state: nextState }).eq('room_id', roomId).catch(console.error);
+      let updatePayload: any = { game_state: nextState };
+      if (action.type === 'START_GAME') {
+        updatePayload.status = 'playing';
+      }
+      supabase.from('rooms').update(updatePayload).eq('room_id', roomId).catch(console.error);
     }
   }, [isInMultiplayerRoom, roomId, dispatchRaw]);
 
@@ -2258,7 +2293,6 @@ export default function App() {
                           settings: { playerCount: multiplayerRoom?.players.length ?? 2, gameStake: 10, gameMode: 'multiplayer' },
                           multiplayerPlayers: multiplayerRoom?.players
                         });
-                        supabase.from('rooms').update({ status: 'playing' }).eq('room_id', roomId);
                     }} 
                     className="w-full mb-4 py-4 bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 hover:bg-emerald-400 text-slate-900 font-black tracking-[0.2em] uppercase rounded-xl transition-all"
                  >
@@ -3472,14 +3506,14 @@ export default function App() {
                 <button 
                   onClick={() => {
                     setShowMenu(false);
+                    dispatch({ type: 'QUIT_GAME', playerId: tgUser?.id?.toString() });
                     if (isInMultiplayerRoom) {
-                       setRoomId(null);
-                       setIsInMultiplayerRoom(false);
                        if (tgUser?.id?.toString() === multiplayerRoom?.host_id?.toString()) {
                           supabase.from('rooms').delete().eq('room_id', roomId).then();
                        }
+                       setRoomId(null);
+                       setIsInMultiplayerRoom(false);
                     }
-                    dispatch({ type: 'QUIT_GAME' });
                   }}
                   className="w-full py-4 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 border border-rose-500/20 mt-4 active:scale-95"
                 >
