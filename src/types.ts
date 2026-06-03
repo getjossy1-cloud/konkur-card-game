@@ -60,4 +60,5 @@ export interface GameState {
   pointTransfers?: { [playerId: string]: { penalty: number, earned: number } };
   gamePot?: number;
   turnStartTime?: number;
+  version?: number;
 }

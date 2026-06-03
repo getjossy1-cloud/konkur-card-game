@@ -1194,10 +1194,21 @@ function gameReducer(state: GameState, action: Action): GameState {
   }
 }
 
+function rootReducer(state: GameState, action: Action): GameState {
+  if (action.type === 'SYNC_STATE') {
+    return action.payload;
+  }
+  const nextState = gameReducer(state, action);
+  if (nextState !== state) {
+    return { ...nextState, version: (state.version || 0) + 1 };
+  }
+  return state;
+}
+
 const GAME_STAKES = [2, 5, 10, 25, 50, 100];
 
 export default function App() {
-  const [state, dispatchRaw] = useReducer(gameReducer, initialState);
+  const [state, dispatchRaw] = useReducer(rootReducer, initialState);
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -1368,7 +1379,10 @@ export default function App() {
         if (data) {
            setMultiplayerRoom({ host_id: data.host_id, players: data.players });
            if (data.game_state) {
-              dispatchRaw({ type: 'SYNC_STATE', payload: data.game_state as GameState });
+              const incomingState = data.game_state as GameState;
+              if ((incomingState.version || 0) > (stateRef.current.version || 0)) {
+                 dispatchRaw({ type: 'SYNC_STATE', payload: incomingState });
+              }
            }
         }
       };
@@ -1385,7 +1399,10 @@ export default function App() {
               setMultiplayerRoom({ host_id: payload.new.host_id, players: payload.new.players });
            }
            if (payload.new.game_state) {
-              dispatchRaw({ type: 'SYNC_STATE', payload: payload.new.game_state as GameState });
+              const incomingState = payload.new.game_state as GameState;
+              if ((incomingState.version || 0) > (stateRef.current.version || 0)) {
+                 dispatchRaw({ type: 'SYNC_STATE', payload: incomingState });
+              }
            }
            if (payload.new.status === 'finished') {
               // we don't handle local state, maybe UI handles it
@@ -2701,9 +2718,11 @@ export default function App() {
 
             return opponents.length > 0 && (
               <div className={`flex justify-center mb-0 sm:mb-2 overflow-hidden shrink-0 gap-4 sm:gap-8 ${opponents.length > 1 ? 'flex-wrap' : ''}`}>
-                {opponents.map(opp => (
+                {opponents.map(opp => {
+                  const isActiveTurn = opp.id === state.players[state.activePlayerIndex]?.id;
+                  return (
                   <div key={opp.id} className="flex flex-col items-center">
-                    <div className="flex items-center gap-2 mb-2 bg-slate-900/60 px-3 py-1.5 rounded-full border border-white/5">
+                    <div className={`flex items-center gap-2 mb-2 px-3 py-1.5 rounded-full border ${isActiveTurn ? 'bg-amber-500/20 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-slate-900/60 border-white/5'}`}>
                       {opp.photoUrl ? (
                         <img src={opp.photoUrl} alt={opp.name} className="w-6 h-6 rounded-full object-cover border border-emerald-500/30" />
                       ) : (
@@ -2724,7 +2743,7 @@ export default function App() {
                             className="transform transition-transform hover:-translate-y-4"
                             style={{ rotate: `${(i - (opp.hand.length - 1) / 2) * 2}deg` }}
                           >
-                            <CardUI card={card} />
+                            <CardUI card={{ ...card, faceUp: false }} />
                           </div>
                         ))}
                       </div>
@@ -2733,7 +2752,7 @@ export default function App() {
                       <div className="flex -space-x-16 opacity-70 transform scale-[0.4] sm:scale-50 origin-top hover:-translate-y-4 hover:opacity-100 transition-all pt-2 group relative">
                         {opp.hand.map((card, i) => (
                           <div key={card.id} className="transform transition-transform group-hover:translate-x-2">
-                             <CardUI card={card} />
+                             <CardUI card={{ ...card, faceUp: false }} />
                           </div>
                         ))}
                         <div className="absolute inset-0 z-10 flex items-center justify-center">
@@ -2742,7 +2761,7 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                ))}
+                )})}
               </div>
             );
           })()}
