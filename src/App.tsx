@@ -1237,7 +1237,17 @@ export default function App() {
       if (action.type === 'START_GAME') {
         updatePayload.status = 'playing';
       }
-      supabase.from('rooms').update(updatePayload).eq('room_id', roomId).catch(console.error);
+      try {
+        supabase.from('rooms').update(updatePayload).eq('room_id', roomId)
+          .then(({ error }) => {
+             if (error) {
+                alert("Supabase Update Error: " + error.message + " | Code: " + error.code);
+             }
+          })
+          .catch((e) => alert("Supabase Async Error: " + e.message));
+      } catch (e: any) {
+         alert("Supabase Sync Error: " + e.message);
+      }
     }
   }, [isInMultiplayerRoom, roomId, dispatchRaw]);
 
