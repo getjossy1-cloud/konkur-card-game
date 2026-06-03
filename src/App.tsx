@@ -1238,10 +1238,16 @@ export default function App() {
         updatePayload.status = 'playing';
       }
       try {
-        supabase.from('rooms').update(updatePayload).eq('room_id', roomId)
-          .then(({ error }) => {
+        supabase.from('rooms').update(updatePayload).eq('room_id', roomId).select()
+          .then(({ data, error }) => {
              if (error) {
                 alert("Supabase Update Error: " + error.message + " | Code: " + error.code);
+             } else {
+                if (!data || data.length === 0) {
+                   alert("Supabase Update Success but 0 rows modified! roomId was: " + roomId);
+                } else {
+                   // alert("Update Success! Rows: " + data.length); // Disable success spam
+                }
              }
           })
           .catch((e) => alert("Supabase Async Error: " + e.message));
