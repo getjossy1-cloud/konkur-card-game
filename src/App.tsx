@@ -1194,7 +1194,6 @@ function gameReducer(state: GameState, action: Action): GameState {
   }
 }
 
-const findAutoMelds = (hand: Card[]): { melds: Card[][], remainingHand: Card[] } => {
 const GAME_STAKES = [2, 5, 10, 25, 50, 100];
 
 export default function App() {
