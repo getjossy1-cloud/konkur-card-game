@@ -1317,16 +1317,24 @@ export default function App() {
 
   useEffect(() => {
     let channel: any;
+    let pollInterval: any;
+
     if (isInMultiplayerRoom && roomId) {
-      // initial fetch
-      supabase.from('rooms').select('*').eq('room_id', roomId).single().then(({ data }) => {
+      const fetchRoom = async () => {
+        const { data } = await supabase.from('rooms').select('*').eq('room_id', roomId).single();
         if (data) {
            setMultiplayerRoom({ host_id: data.host_id, players: data.players });
            if (data.game_state) {
               dispatchRaw({ type: 'SYNC_STATE', payload: data.game_state as GameState });
            }
         }
-      });
+      };
+
+      // initial fetch
+      fetchRoom();
+
+      // fallback polling every 3 seconds
+      pollInterval = setInterval(fetchRoom, 3000);
 
       channel = supabase.channel(`room:${roomId}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `room_id=eq.${roomId}` }, (payload) => {
@@ -1345,6 +1353,9 @@ export default function App() {
     return () => {
       if (channel) {
         supabase.removeChannel(channel);
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
       }
     };
   }, [isInMultiplayerRoom, roomId, dispatchRaw]);
